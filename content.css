@@ -1,0 +1,222 @@
+/* ─── Bunbee panel ─────────────────────────────────────────────────────────── */
+
+#bunbee-panel {
+    font-family: system-ui, sans-serif;
+    font-size: 14px;
+    background: #f2f7ec;
+    border: 1px solid #c8ddb0;
+    border-radius: 10px;
+    margin: 16px auto;
+    max-width: 720px;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.bb-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: #2c3830;
+    color: #f2f7ec;
+}
+
+.bb-logo {
+    width: 16px;
+    height: 16px;
+}
+
+.bb-title {
+    font-weight: 600;
+    font-size: 14px;
+    flex: 1;
+    color: #8faf72;
+}
+
+.bb-toggle {
+    background: none;
+    border: none;
+    color: #8faf72;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 2px 6px;
+}
+
+.bb-body {
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.bb-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.bb-section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #2c3830;
+    border-bottom: 1px solid #c8ddb0;
+    padding-bottom: 6px;
+}
+
+.bb-content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.bb-muted {
+    font-size: 13px;
+    color: #7a8c72;
+}
+
+/* ─── Mnemonic card ──────────────────────────────────────────────────────────── */
+
+.bb-mnemonic {
+    background: #fff;
+    border: 1px solid #c8ddb0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.bb-mnemonic-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.bb-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 10px;
+    background: rgba(96, 91, 81, 0.13);
+    color: #605b51;
+}
+
+.bb-badge--meaning {
+    background: rgba(96, 91, 81, 0.13);
+    color: #605b51;
+}
+
+.bb-badge--reading {
+    background: #454040;
+    color: #f7f4f0;
+}
+
+.bb-score {
+    font-size: 11px;
+    color: #7a8c72;
+    margin-left: auto;
+}
+
+.bb-mnemonic-text {
+    font-size: 13px;
+    color: #2c3830;
+    line-height: 1.6;
+}
+
+.bb-mnemonic-text mark {
+    background: rgba(143, 175, 114, 0.35);
+    color: inherit;
+    border-radius: 3px;
+    padding: 0 2px;
+}
+
+.bb-mnemonic-author {
+    font-size: 11px;
+    color: #7a8c72;
+}
+
+/* ─── Sentences ──────────────────────────────────────────────────────────────── */
+
+.bb-sentence {
+    background: #fff;
+    border: 1px solid #c8ddb0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.bb-sentence-jp {
+    font-size: 18px;
+    color: #2c3830;
+    line-height: 1.5;
+}
+
+.bb-sentence-reading {
+    font-size: 12px;
+    color: #7a8c72;
+}
+
+.bb-sentence-en {
+    font-size: 13px;
+    color: #2c3830;
+    border-top: 1px solid #e8f0e0;
+    padding-top: 6px;
+    margin-top: 2px;
+}
+
+/* ─── Buttons ────────────────────────────────────────────────────────────────── */
+
+.bb-btn {
+    padding: 7px 16px;
+    background: #8faf72;
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    align-self: flex-start;
+}
+
+.bb-btn:hover {
+    background: #7a9c60;
+}
+
+.bb-btn--secondary {
+    background: #f2f7ec;
+    color: #2c3830;
+    border: 1px solid #c8ddb0;
+    margin-top: 4px;
+}
+
+.bb-btn--secondary:hover {
+    background: #e4eedd;
+}
+
+.bb-save-btn,
+.bb-save-sentence-btn {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 6px;
+    border: 1px solid #c8ddb0;
+    background: #f2f7ec;
+    color: #2c3830;
+    cursor: pointer;
+    align-self: flex-start;
+}
+
+.bb-save-btn:hover,
+.bb-save-sentence-btn:hover {
+    background: #e4eedd;
+}
+
+/* ─── Footer ─────────────────────────────────────────────────────────────────── */
+
+.bb-footer {
+    font-size: 11px;
+    color: #7a8c72;
+    text-align: right;
+}

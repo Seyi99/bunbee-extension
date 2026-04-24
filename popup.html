@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bunbee</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            width: 280px;
+            padding: 16px;
+            background: #f2f7ec;
+            margin: 0;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .header img { width: 24px; height: 24px; }
+        .header span { font-weight: 600; color: #2c3830; font-size: 16px; }
+        label { font-size: 12px; font-weight: 600; color: #2c3830; display: block; margin-bottom: 4px; }
+        input {
+            width: 100%; padding: 8px 10px; border-radius: 7px;
+            border: 1px solid #c8ddb0; font-size: 13px; outline: none;
+            box-sizing: border-box; font-family: monospace; margin-bottom: 10px;
+        }
+        button {
+            width: 100%; padding: 9px; background: #8faf72; color: #fff;
+            border: none; border-radius: 7px; font-size: 13px;
+            font-weight: 600; cursor: pointer;
+        }
+        button:hover { background: #7a9c60; }
+        .status { font-size: 12px; margin-top: 8px; text-align: center; }
+        .status.ok { color: #4a7c3f; }
+        .status.err { color: #c0392b; }
+        .logged-in { font-size: 13px; color: #2c3830; margin-bottom: 10px; }
+        .logout-btn { background: #f2f7ec; color: #c0392b; border: 1px solid #fca5a5; }
+        .logout-btn:hover { background: #fee2e2; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="icons/icon48.png" alt="Bunbee" />
+        <span>Bunbee</span>
+    </div>
+    <div id="root"></div>
+    <script src="popup.js"></script>
+</body>
+</html>
