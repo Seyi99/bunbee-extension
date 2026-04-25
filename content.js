@@ -109,6 +109,56 @@ function injectPanel() {
 }
 
 // ─── Load mnemonics ───────────────────────────────────────────────────────────
+// The mnemonics section is split into two tabs:
+//   • "My mnemonics"     → mnemonics created by the logged-in user (m.isOwn)
+//   • "Public mnemonics" → community mnemonics (others), sorted by score
+// Each tab shows the top 3 entries.
+
+const TAB_STATE = { active: "public" };
+
+function renderMnemonicCard(m) {
+    return `
+        <div class="bb-mnemonic">
+            <div class="bb-mnemonic-meta">
+                <span class="bb-badge bb-badge--${m.mnemonicType}">${m.mnemonicType}</span>
+                <span class="bb-badge">${m.language?.toUpperCase()}</span>
+                <span class="bb-score">▲ ${m.score}</span>
+            </div>
+            <div class="bb-mnemonic-text">${renderHighlights(m.text)}</div>
+            <div class="bb-mnemonic-author">by ${m.username}</div>
+            <button class="bb-save-btn" data-id="${m.id}" data-saved="${m.isSaved}">
+                ${m.isSaved ? "✅ Saved" : "🔖 Save"}
+            </button>
+        </div>
+    `;
+}
+
+function renderEmptyState(kind) {
+    if (kind === "my") {
+        return `<span class="bb-muted">You haven't created mnemonics for this item yet.</span>`;
+    }
+    return `<span class="bb-muted">No community mnemonics yet for this item.</span>`;
+}
+
+function renderMnemonicsPanel(myTop, publicTop, myCount, publicCount) {
+    const isMy = TAB_STATE.active === "my";
+    return `
+        <div class="bb-tabs">
+            <button class="bb-tab ${isMy ? "bb-tab--active" : ""}" data-tab="my">
+                My (${myCount})
+            </button>
+            <button class="bb-tab ${!isMy ? "bb-tab--active" : ""}" data-tab="public">
+                Public (${publicCount})
+            </button>
+        </div>
+        <div class="bb-tab-panel" data-panel="my" style="display:${isMy ? "flex" : "none"}">
+            ${myTop.length ? myTop.map(renderMnemonicCard).join("") : renderEmptyState("my")}
+        </div>
+        <div class="bb-tab-panel" data-panel="public" style="display:${!isMy ? "flex" : "none"}">
+            ${publicTop.length ? publicTop.map(renderMnemonicCard).join("") : renderEmptyState("public")}
+        </div>
+    `;
+}
 
 async function loadMnemonics(subjectId) {
     const jwt = await getJwt();
@@ -141,27 +191,39 @@ async function loadMnemonics(subjectId) {
             return;
         }
 
-        // Show top 3 by score
-        const top = mnemonics.slice(0, 3);
-        el.innerHTML = top.map((m) => `
-            <div class="bb-mnemonic">
-                <div class="bb-mnemonic-meta">
-                    <span class="bb-badge bb-badge--${m.mnemonicType}">${m.mnemonicType}</span>
-                    <span class="bb-badge">${m.language?.toUpperCase()}</span>
-                    <span class="bb-score">▲ ${m.score}</span>
-                </div>
-                <div class="bb-mnemonic-text">${renderHighlights(m.text)}</div>
-                <div class="bb-mnemonic-author">by ${m.username}</div>
-                <button class="bb-save-btn" data-id="${m.id}" data-saved="${m.isSaved}">
-                    ${m.isSaved ? "✅ Saved" : "🔖 Save"}
-                </button>
-            </div>
-        `).join("");
+        // Split into "mine" and "public", sorted by score
+        const byScore = (a, b) => (b.score ?? 0) - (a.score ?? 0);
+        const mine = mnemonics.filter((m) => m.isOwn).sort(byScore);
+        const community = mnemonics.filter((m) => !m.isOwn).sort(byScore);
 
-        // Save buttons
-        el.querySelectorAll(".bb-save-btn").forEach((btn) => {
-            btn.addEventListener("click", () => handleSaveMnemonic(btn));
-        });
+        // If the active tab is empty but the other has content, switch to it.
+        if (TAB_STATE.active === "my" && !mine.length && community.length) {
+            TAB_STATE.active = "public";
+        } else if (TAB_STATE.active === "public" && !community.length && mine.length) {
+            TAB_STATE.active = "my";
+        }
+
+        const renderInto = (target) => {
+            target.innerHTML = renderMnemonicsPanel(
+                mine.slice(0, 3),
+                community.slice(0, 3),
+                mine.length,
+                community.length,
+            );
+
+            target.querySelectorAll(".bb-tab").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    TAB_STATE.active = btn.dataset.tab;
+                    renderInto(target);
+                });
+            });
+
+            target.querySelectorAll(".bb-save-btn").forEach((btn) => {
+                btn.addEventListener("click", () => handleSaveMnemonic(btn));
+            });
+        };
+
+        renderInto(el);
 
     } catch (e) {
         el.innerHTML = `<span class="bb-muted">Could not load mnemonics (${e.message}).</span>`;
