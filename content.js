@@ -3,6 +3,7 @@
 // generator for the current subject.
 
 const BUNBEE_API = "https://api.bunbee.cc";
+const BUNBEE_WEB = "https://bunbee.cc";
 const PANEL_ID = "bunbee-panel";
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -57,7 +58,12 @@ function createPanel() {
         </div>
         <div class="bb-body">
             <div class="bb-section" id="bb-mnemonics">
-                <div class="bb-section-title">🧠 Mnemonics</div>
+                <div class="bb-section-title">
+                    <span>🧠 Mnemonics</span>
+                    <button class="bb-add-btn" id="bb-add-mnemonic-btn" title="Create a new mnemonic for this item">
+                        + Add
+                    </button>
+                </div>
                 <div class="bb-content" id="bb-mnemonics-content">
                     <span class="bb-muted">Loading…</span>
                 </div>
@@ -110,6 +116,17 @@ function injectPanel() {
     // Generate button
     panel.querySelector("#bb-generate-btn").addEventListener("click", () => {
         handleGenerate();
+    });
+
+    // "+ Add mnemonic" — opens the web app's "new mnemonic" page for the
+    // current subject in a new tab. We resolve the subjectId at click time
+    // (instead of at render time) so it always reflects the active item.
+    panel.querySelector("#bb-add-mnemonic-btn").addEventListener("click", () => {
+        const subject = getCurrentSubject();
+        const url = subject?.subjectId
+            ? `${BUNBEE_WEB}/mnemonics/subject/${subject.subjectId}/new`
+            : `${BUNBEE_WEB}/mnemonics/new`;
+        window.open(url, "_blank", "noopener,noreferrer");
     });
 }
 
@@ -193,12 +210,9 @@ async function loadMnemonics(subjectId) {
         const text = await res.text();
         const mnemonics = text ? JSON.parse(text) : [];
 
-        if (!mnemonics.length) {
-            el.innerHTML = `<span class="bb-muted">No mnemonics yet for this item.</span>`;
-            return;
-        }
-
-        // Split into "mine" and "public", sorted by score
+        // We always render the tab structure — even when there are no
+        // mnemonics — so the user sees the "My / Public" UI plus an empty
+        // state inside each panel, instead of a single "no mnemonics" line.
         const byScore = (a, b) => (b.score ?? 0) - (a.score ?? 0);
         const mine = mnemonics.filter((m) => m.isOwn).sort(byScore);
         const community = mnemonics.filter((m) => !m.isOwn).sort(byScore);
