@@ -44,9 +44,14 @@ function getCurrentSubject() {
 function createPanel() {
     const panel = document.createElement("div");
     panel.id = PANEL_ID;
+    // Build the icon as a real <img> with src pointing at the extension's
+    // packaged asset. We don't use a `data:` URI inside innerHTML because
+    // WaniKani's CSP (`img-src 'self'`) does not include `data:` and would
+    // block it; extension URLs (`moz-extension://`, `chrome-extension://`)
+    // are allowed for content-script-injected images.
     panel.innerHTML = `
         <div class="bb-header">
-            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAADmUlEQVQ4T22TbUxbVRjH/6e3t/deaGlKBLaWVSiClI2GdUtmY9mIkElY2DTiiBqJ2bR8WaImfjNGNqNGPy3GxbjEmhlA98EP2lAWFjcMboSY1owMViZWxsvWl7W19AXuvb33emjcB41PcpKT5zn//3OeX84hR12uyoSUGeF4rtbe6Bjt6X1henh4WMb/xMjIiG7h1s3upcidV4iixIyVzGfE22635ETlJw1qh4HjC1bbnjM/TP78DSFE+6+H96BzKJ/LXRQl0UB0ujm9nnmN7Bx60eMRkhBtf20mj/J6/nXCqCe5KmVdljl2p86yopyKlZoVSQoIHPdJpclyxayw8UAoVCwbPAqfr7/i5vVfz7J6pr6l1RY28bo6huFIfktLLixGD8myuuRw7j4XCISKjzRlA03TyCFnU7Olhh10tVU919BYt9/ucJEqoQidmsNmQcXKShzr66lwaD4b2Cwql2dDdyM7Y5YNXh085iRS7OMer9Dt9ViN9Q026DgroNBGUhKgOFRZxv37Wcz9li5+9+PG1dUH0rnQ/HKYnDp+3CQZMqN9h/V9J3qter6CB1VDA/XWGQC1BFLK01sqtBWBKCqYmsnIX41FJ9IZvEV6vK6hvc3spY/ebYeBN6BEzzEsA4bqNU1Hm9OEKtF8CUpJA0sL25KGTy9EtCvXY6eIZ//j02+ebjky0N+I2XACn/uXMHCiCc8fa6QOVFwSy7y+D67BP3YX773djqfcNQhcXYf/23sBcvigI3n2TOtjndY63IikMHYjiq4uOw50WJBKFkCIimoLj7lwGlPXVnH6yBPobKvBzFoC5y//sUyedjfce+elZnu/2Qq5mkVsl4RauxGra1ncvpPeIQFniwX1NhMSDzaxJ8ZCHy9h4uEG/DOpeTpC0yWv2zz0/htt4M0CYKIQDXQpIra2pTJMgWcoC7qjQFFQUHiYx/nxCGYXyRekt9Pt4gR1+mQ3axnos4IRKgHeBOgFKhChMSwVq4CYg0Z5KCqLqV8yuDi6Es8X2UHi8/nYjZXIy0ROf9jfJezue6ZWZzZxMAgCNasoA1REEbK4jXy2gOC1hDoeTMcJqfrAecDrLz+kYDDIjX994dlo9HdfrVne595XtevJljrObKRlqYh0VsLy2tb23K1sPJbCbaPR+GWFxT41OTkp/usveDx7q3OJZKskK03VFktHSVUdDNGVFFX5M5/PLzAMu9zQ6licmKAz/BN/Ay2UiQF0vyrSAAAAAElFTkSuQmCC" class="bb-logo" />
+            <img src="${chrome.runtime.getURL("icons/icon16.png")}" class="bb-logo" alt="Bunbee" />
             <span class="bb-title">Bunbee</span>
             <button class="bb-toggle" title="Toggle panel">▼</button>
         </div>
@@ -94,12 +99,12 @@ function injectPanel() {
         document.body.appendChild(panel);
     }
 
-    // Toggle collapse
+    // Toggle collapse — uses class toggling instead of `el.style.display = ...`
+    // to play nicely with strict CSPs that disallow inline styles.
     panel.querySelector(".bb-toggle").addEventListener("click", () => {
         const body = panel.querySelector(".bb-body");
-        const isHidden = body.style.display === "none";
-        body.style.display = isHidden ? "block" : "none";
-        panel.querySelector(".bb-toggle").textContent = isHidden ? "▼" : "▲";
+        const wasCollapsed = body.classList.toggle("bb-collapsed");
+        panel.querySelector(".bb-toggle").textContent = wasCollapsed ? "▲" : "▼";
     });
 
     // Generate button
@@ -142,6 +147,8 @@ function renderEmptyState(kind) {
 
 function renderMnemonicsPanel(myTop, publicTop, myCount, publicCount) {
     const isMy = TAB_STATE.active === "my";
+    // We use class modifiers (--hidden) instead of inline `style="display:..."`
+    // because WaniKani's CSP (`style-src 'self'`) blocks inline style attributes.
     return `
         <div class="bb-tabs">
             <button class="bb-tab ${isMy ? "bb-tab--active" : ""}" data-tab="my">
@@ -151,10 +158,10 @@ function renderMnemonicsPanel(myTop, publicTop, myCount, publicCount) {
                 Public (${publicCount})
             </button>
         </div>
-        <div class="bb-tab-panel" data-panel="my" style="display:${isMy ? "flex" : "none"}">
+        <div class="bb-tab-panel ${isMy ? "" : "bb-tab-panel--hidden"}" data-panel="my">
             ${myTop.length ? myTop.map(renderMnemonicCard).join("") : renderEmptyState("my")}
         </div>
-        <div class="bb-tab-panel" data-panel="public" style="display:${!isMy ? "flex" : "none"}">
+        <div class="bb-tab-panel ${!isMy ? "" : "bb-tab-panel--hidden"}" data-panel="public">
             ${publicTop.length ? publicTop.map(renderMnemonicCard).join("") : renderEmptyState("public")}
         </div>
     `;

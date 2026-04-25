@@ -50,6 +50,12 @@
     gap: 16px;
 }
 
+/* Toggled by .bb-toggle — kept as a class instead of `style="display:none"`
+   to avoid violating WaniKani's CSP (`style-src 'self'`). */
+.bb-body.bb-collapsed {
+    display: none;
+}
+
 .bb-section {
     display: flex;
     flex-direction: column;
@@ -113,6 +119,12 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
+}
+
+/* The active tab toggles a class instead of an inline `style="display:..."`
+   so we don't trip WaniKani's CSP (`style-src 'self'`). */
+.bb-tab-panel--hidden {
+    display: none;
 }
 
 /* ─── Mnemonic card ──────────────────────────────────────────────────────────── */
