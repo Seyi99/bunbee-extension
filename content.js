@@ -52,7 +52,7 @@ function createPanel() {
     // are allowed for content-script-injected images.
     panel.innerHTML = `
         <div class="bb-header">
-            <img src="${chrome.runtime.getURL("icons/icon16.png")}" class="bb-logo" alt="Bunbee" />
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAADmUlEQVQ4T22TbUxbVRjH/6e3t/deaGlKBLaWVSiClI2GdUtmY9mIkElY2DTiiBqJ2bR8WaImfjNGNqNGPy3GxbjEmhlA98EP2lAWFjcMboSY1owMViZWxsvWl7W19AXuvb33emjcB41PcpKT5zn//3OeX84hR12uyoSUGeF4rtbe6Bjt6X1henh4WMb/xMjIiG7h1s3upcidV4iixIyVzGfE22635ETlJw1qh4HjC1bbnjM/TP78DSFE+6+H96BzKJ/LXRQl0UB0ujm9nnmN7Bx60eMRkhBtf20mj/J6/nXCqCe5KmVdljl2p86yopyKlZoVSQoIHPdJpclyxayw8UAoVCwbPAqfr7/i5vVfz7J6pr6l1RY28bo6huFIfktLLixGD8myuuRw7j4XCISKjzRlA03TyCFnU7Olhh10tVU919BYt9/ucJEqoQidmsNmQcXKShzr66lwaD4b2Cwql2dDdyM7Y5YNXh085iRS7OMer9Dt9ViN9Q026DgroNBGUhKgOFRZxv37Wcz9li5+9+PG1dUH0rnQ/HKYnDp+3CQZMqN9h/V9J3qter6CB1VDA/XWGQC1BFLK01sqtBWBKCqYmsnIX41FJ9IZvEV6vK6hvc3spY/ebYeBN6BEzzEsA4bqNU1Hm9OEKtF8CUpJA0sL25KGTy9EtCvXY6eIZ//j02+ebjky0N+I2XACn/uXMHCiCc8fa6QOVFwSy7y+D67BP3YX773djqfcNQhcXYf/23sBcvigI3n2TOtjndY63IikMHYjiq4uOw50WJBKFkCIimoLj7lwGlPXVnH6yBPobKvBzFoC5y//sUyedjfce+elZnu/2Qq5mkVsl4RauxGra1ncvpPeIQFniwX1NhMSDzaxJ8ZCHy9h4uEG/DOpeTpC0yWv2zz0/htt4M0CYKIQDXQpIra2pTJMgWcoC7qjQFFQUHiYx/nxCGYXyRekt9Pt4gR1+mQ3axnos4IRKgHeBOgFKhChMSwVq4CYg0Z5KCqLqV8yuDi6Es8X2UHi8/nYjZXIy0ROf9jfJezue6ZWZzZxMAgCNasoA1REEbK4jXy2gOC1hDoeTMcJqfrAecDrLz+kYDDIjX994dlo9HdfrVne595XtevJljrObKRlqYh0VsLy2tb23K1sPJbCbaPR+GWFxT41OTkp/usveDx7q3OJZKskK03VFktHSVUdDNGVFFX5M5/PLzAMu9zQ6licmKAz/BN/Ay2UiQF0vyrSAAAAAElFTkSuQmCC" class="bb-logo" alt="Bunbee" />
             <span class="bb-title">Bunbee</span>
             <button class="bb-toggle" title="Toggle panel">▼</button>
         </div>
