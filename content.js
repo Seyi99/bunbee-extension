@@ -172,13 +172,21 @@ function togglePanelCollapsed() {
     setPanelCollapsed(!body.classList.contains("bb-collapsed"));
 }
 
-// "B" toggles the panel. We ignore the keystroke if the user is typing in any
-// editable element so it doesn't interfere with the review answer field
-// (typing "ba" in romaji becomes ば and we don't want to swallow that "b").
-function isEditableTarget(target) {
+// "B" toggles the panel. We ignore the keystroke when the user is actively
+// typing in WK's answer field so we don't swallow the "b" of e.g. "ba" → ば.
+// We DO accept the shortcut when the input is in WK's "answered" state
+// (readonly / disabled / wrapped in a `--correct`/`--incorrect` container) so
+// it works alongside WK's own post-answer shortcuts like "F" (subject info).
+function isUserTyping(target) {
     if (!target) return false;
     const tag = target.tagName?.toLowerCase();
-    if (tag === "input" || tag === "textarea" || tag === "select") return true;
+    if (tag === "input" || tag === "textarea") {
+        if (target.readOnly || target.disabled) return false;
+        if (target.getAttribute("aria-readonly") === "true") return false;
+        if (target.closest(".quiz-input--correct, .quiz-input--incorrect, .complete, .answered")) return false;
+        return true;
+    }
+    if (tag === "select") return true;
     if (target.isContentEditable) return true;
     return false;
 }
@@ -186,7 +194,7 @@ function isEditableTarget(target) {
 function setupShortcuts() {
     document.addEventListener("keydown", (e) => {
         if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
-        if (isEditableTarget(e.target)) return;
+        if (isUserTyping(e.target)) return;
         if (e.key === "b" || e.key === "B") {
             e.preventDefault();
             togglePanelCollapsed();
@@ -217,9 +225,11 @@ function injectPanel() {
         document.body.appendChild(panel);
     }
 
-    // Toggle collapse — uses class toggling instead of `el.style.display = ...`
-    // to play nicely with strict CSPs that disallow inline styles.
-    panel.querySelector(".bb-toggle").addEventListener("click", () => {
+    // Toggle collapse on any click inside the header (logo, title, caret).
+    // Listening on the header instead of just the .bb-toggle button means the
+    // whole strip becomes a hit target, which matches the user's expectation.
+    // The button still bubbles up here, so we don't need a separate handler.
+    panel.querySelector(".bb-header").addEventListener("click", () => {
         togglePanelCollapsed();
     });
 

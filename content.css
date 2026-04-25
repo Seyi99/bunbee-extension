@@ -20,6 +20,13 @@
     padding: 10px 14px;
     background: #2c3830;
     color: #f2f7ec;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.12s;
+}
+
+.bb-header:hover {
+    background: #3a4a3f;
 }
 
 .bb-logo {
