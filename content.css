@@ -164,7 +164,10 @@
     align-self: center;
 }
 
-.bb-add-btn--hidden {
+/* Doubled-up class selector wins specificity vs. the base `.bb-add-btn`
+   rule below, which sets `display: inline-flex` (otherwise that rule, being
+   later in the file with equal specificity, would defeat the hidden state). */
+.bb-add-btn.bb-add-btn--hidden {
     display: none;
 }
 

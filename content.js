@@ -319,6 +319,33 @@ function setupShortcuts() {
             if (!isPanelOpen()) return;
             e.preventDefault();
             cycleTopTab(e.key === "ArrowRight" ? 1 : -1);
+            return;
+        }
+
+        // "N" triggers the primary action of the active tab:
+        //   • Mnemonics tab        → click "+ Add" (open the new-mnemonic form)
+        //   • Example sentences    → click "Generate sentences" / "Try again"
+        // We look up the button live and only preventDefault when we actually
+        // find one to click, so the keystroke falls through normally on tabs
+        // where no action is currently available (e.g. sentences already
+        // generated and the Generate button has been replaced by results).
+        if (e.key === "n" || e.key === "N") {
+            if (!isPanelOpen()) return;
+            const panel = document.getElementById(PANEL_ID);
+            if (!panel) return;
+
+            let btn = null;
+            if (TOPTAB_STATE.active === "mnemonics") {
+                btn = panel.querySelector("#bb-add-mnemonic-btn");
+                if (btn?.classList.contains("bb-add-btn--hidden")) btn = null;
+            } else if (TOPTAB_STATE.active === "sentences") {
+                btn = panel.querySelector("#bb-generate-btn");
+            }
+
+            if (btn) {
+                e.preventDefault();
+                btn.click();
+            }
         }
     });
 }
