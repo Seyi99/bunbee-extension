@@ -13,6 +13,26 @@
     overflow: hidden;
 }
 
+/* ─── Inline Material Symbols (SVG) ──────────────────────────────────────────
+   Icons are emitted as inline <svg class="bb-icon"> by content.js. We size
+   them per-call via width/height attrs and let them inherit the parent's
+   color through fill="currentColor". The class is just for layout safety. */
+
+.bb-icon {
+    display: inline-block;
+    flex-shrink: 0;
+    vertical-align: middle;
+    line-height: 1;
+}
+
+/* Wrap an icon + a text label in this when the parent uses flex with a
+   different gap than the icon-text gap we want. */
+.bb-title-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
 .bb-header {
     display: flex;
     align-items: center;
@@ -48,6 +68,9 @@
     cursor: pointer;
     font-size: 12px;
     padding: 2px 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .bb-body {
@@ -95,6 +118,9 @@
     cursor: pointer;
     font-family: inherit;
     line-height: 1.4;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .bb-add-btn:hover {
@@ -204,6 +230,9 @@
     font-size: 11px;
     color: #7a8c72;
     margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
 }
 
 .bb-mnemonic-text {
@@ -267,6 +296,10 @@
     font-weight: 600;
     cursor: pointer;
     align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
 }
 
 .bb-btn:hover {
@@ -294,6 +327,9 @@
     color: #2c3830;
     cursor: pointer;
     align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
 }
 
 .bb-save-btn:hover,
@@ -344,6 +380,9 @@
     cursor: pointer;
     padding: 0;
     font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .bb-link-btn:hover {
@@ -428,6 +467,9 @@
     font-weight: 600;
     cursor: pointer;
     font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .bb-tool-btn:hover {

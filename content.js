@@ -6,6 +6,35 @@ const BUNBEE_API = "https://api.bunbee.cc";
 const BUNBEE_WEB = "https://bunbee.cc";
 const PANEL_ID = "bunbee-panel";
 
+// ─── Icons (Material Symbols Rounded, inlined as SVG) ────────────────────────
+// We bundle the icon paths as inline SVG instead of loading the Material
+// Symbols web font. WaniKani's CSP (`font-src`, `style-src 'self'`) blocks
+// remote fonts and inline @font-face rules, and MV3 popups have a strict
+// default CSP that disallows fonts.googleapis.com. Inline SVG bypasses both:
+// no external request, no inline <style>, just shape data in the DOM.
+//
+// All paths come from Google's Material Symbols Rounded set (Apache 2.0).
+// Most use the modern 960x960 grid (viewBox "0 -960 960 960"); a couple
+// (auto_awesome) come from the older 24x24 release.
+const ICONS = {
+    psychology: { vb: "0 -960 960 960", d: "m446-418 2 30q.74 6.22 4.78 10.11 4.05 3.89 9.94 3.89h32.39q5.89 0 10.02-3.89 4.12-3.89 4.87-10.11l2-30q12-2 22.47-8.46Q544.94-432.92 553-441l30 10q5 2 10 0t7.8-6.85l15.4-26.3q2.8-4.85 2.3-9.85t-5.19-9.17L593-499q5-14 5-29t-5-29l20.31-15.83Q618-577 618.5-582t-2.3-9.85l-15.4-26.3Q598-623 593-625t-10 0l-30 10q-8.33-7.69-19.17-13.85Q523-635 512-638l-2-30q-.74-6.22-4.78-10.11-4.05-3.89-9.94-3.89h-32.39q-5.89 0-10.01 3.89-4.13 3.89-4.88 10.11l-2 30q-11 3-21.83 9.15Q413.33-622.69 405-615l-30-10q-5-2-10 0t-7.8 6.85l-15.4 26.3Q339-587 339.5-582t5.19 9.17L365-557q-5 14-5 29t5 29l-20.31 15.83Q340-479 339.5-474t2.3 9.85l15.4 26.3Q360-433 365-431t10 0l30-10q8.06 8.08 18.53 14.54Q434-420 446-418Zm-16.5-60.38q-20.5-20.38-20.5-49.5t20.38-49.62q20.38-20.5 49.5-20.5t49.62 20.38q20.5 20.38 20.5 49.5t-20.38 49.62q-20.38 20.5-49.5 20.5t-49.62-20.38ZM240-252q-57-52-88.5-121.5T120-520q0-150 105-255t255-105q125 0 221.5 73.5T827-615l55 218q4 14-5 25.5T853-360h-93v140q0 24.75-17.62 42.37Q724.75-160 700-160H600v50q0 12.75-8.68 21.37-8.67 8.63-21.5 8.63-12.82 0-21.32-8.63Q540-97.25 540-110v-80q0-12.75 8.63-21.38Q557.25-220 570-220h130v-170q0-12.75 8.63-21.38Q717.25-420 730-420h84l-45-180q-24-97-105-158.5T480-820q-125 0-212.5 86.5T180-522.46q0 64.42 26.32 122.39Q232.65-342.09 281-297l19 18v169q0 12.75-8.68 21.37-8.67 8.63-21.5 8.63-12.82 0-21.32-8.63Q240-97.25 240-110v-142Zm257-198Z" },
+    auto_awesome: { vb: "0 0 24 24", d: "M19 8.3q-.125 0-.262-.075Q18.6 8.15 18.55 8l-.8-1.75-1.75-.8q-.15-.05-.225-.188Q15.7 5.125 15.7 5t.075-.263Q15.85 4.6 16 4.55l1.75-.8.8-1.75q.05-.15.188-.225.137-.075.262-.075t.263.075q.137.075.187.225l.8 1.75 1.75.8q.15.05.225.187.075.138.075.263t-.075.262Q22.15 5.4 22 5.45l-1.75.8-.8 1.75q-.05.15-.187.225-.138.075-.263.075Zm0 14q-.125 0-.262-.075-.138-.075-.188-.225l-.8-1.75-1.75-.8q-.15-.05-.225-.188-.075-.137-.075-.262t.075-.262q.075-.138.225-.188l1.75-.8.8-1.75q.05-.15.188-.225.137-.075.262-.075t.263.075q.137.075.187.225l.8 1.75 1.75.8q.15.05.225.188.075.137.075.262t-.075.262q-.075.138-.225.188l-1.75.8-.8 1.75q-.05.15-.187.225-.138.075-.263.075ZM9 18.575q-.275 0-.525-.15T8.1 18l-1.6-3.5L3 12.9q-.275-.125-.425-.375-.15-.25-.15-.525t.15-.525q.15-.25.425-.375l3.5-1.6L8.1 6q.125-.275.375-.425.25-.15.525-.15t.525.15q.25.15.375.425l1.6 3.5 3.5 1.6q.275.125.425.375.15.25.15.525t-.15.525q-.15.25-.425.375l-3.5 1.6L9.9 18q-.125.275-.375.425-.25.15-.525.15Z" },
+    keyboard_arrow_up: { vb: "0 -960 960 960", d: "M480-554 304-378q-9 9-21 8.5t-21-9.5q-9-9-9-21.5t9-21.5l197-197q9-9 21-9t21 9l198 198q9 9 9 21t-9 21q-9 9-21.5 9t-21.5-9L480-554Z" },
+    keyboard_arrow_down: { vb: "0 -960 960 960", d: "M469-358q-5-2-10-7L261-563q-9-9-8.5-21.5T262-606q9-9 21.5-9t21.5 9l175 176 176-176q9-9 21-8.5t21 9.5q9 9 9 21.5t-9 21.5L501-365q-5 5-10 7t-11 2q-6 0-11-2Z" },
+    arrow_upward: { vb: "0 -960 960 960", d: "M450-686 223-459q-9 9-21 9t-21-9q-9-9-9-21t9-21l278-278q5-5 10-7t11-2q6 0 11 2t10 7l278 278q9 9 9 21t-9 21q-9 9-21 9t-21-9L510-686v496q0 13-8.5 21.5T480-160q-13 0-21.5-8.5T450-190v-496Z" },
+    arrow_back: { vb: "0 -960 960 960", d: "m274-450 227 227q9 9 9 21t-9 21q-9 9-21 9t-21-9L181-459q-5-5-7-10t-2-11q0-6 2-11t7-10l278-278q9-9 21-9t21 9q9 9 9 21t-9 21L274-510h496q13 0 21.5 8.5T800-480q0 13-8.5 21.5T770-450H274Z" },
+    hourglass_top: { vb: "0 -960 960 960", d: "M308-140h344v-127q0-72-50-121.5T480-438q-72 0-122 49.5T308-267v127ZM190-80q-13 0-21.5-8.5T160-110q0-13 8.5-21.5T190-140h58v-127q0-71 40-129t106-84q-66-27-106-85t-40-129v-126h-58q-13 0-21.5-8.5T160-850q0-13 8.5-21.5T190-880h580q13 0 21.5 8.5T800-850q0 13-8.5 21.5T770-820h-58v126q0 71-40 129t-106 85q66 26 106 84t40 129v127h58q13 0 21.5 8.5T800-110q0 13-8.5 21.5T770-80H190Z" },
+    bookmark_add: { vb: "0 -960 960 960", d: "m480-240-196 84q-30 13-57-4.76-27-17.75-27-50.24v-574q0-24 18-42t42-18h260q12.75 0 21.38 8.68 8.62 8.67 8.62 21.5 0 12.82-8.62 21.32-8.63 8.5-21.38 8.5H260v574l220-93 220 93v-304q0-12.75 8.68-21.38 8.67-8.62 21.5-8.62 12.82 0 21.32 8.62 8.5 8.63 8.5 21.38v304q0 32.49-27 50.24Q706-143 676-156l-196-84Zm0-545H260h290-70Zm220 90h-60q-12.75 0-21.37-8.68-8.63-8.67-8.63-21.5 0-12.82 8.63-21.32 8.62-8.5 21.37-8.5h60v-60q0-12.75 8.68-21.38 8.67-8.62 21.5-8.62 12.82 0 21.32 8.62 8.5 8.63 8.5 21.38v60h60q12.75 0 21.38 8.68 8.62 8.67 8.62 21.5 0 12.82-8.62 21.32-8.63 8.5-21.38 8.5h-60v60q0 12.75-8.68 21.37-8.67 8.63-21.5 8.63-12.82 0-21.32-8.63-8.5-8.62-8.5-21.37v-60Z" },
+    check_circle: { vb: "0 -960 960 960", d: "m424-408-86-86q-11-11-28-11t-28 11q-11 11-11 28t11 28l114 114q12 12 28 12t28-12l226-226q11-11 11-28t-11-28q-11-11-28-11t-28 11L424-408Zm56 328q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Z" },
+    refresh: { vb: "0 -960 960 960", d: "M480-160q-133 0-226.5-93.5T160-480q0-133 93.5-226.5T480-800q85 0 149 34.5T740-671v-99q0-13 8.5-21.5T770-800q13 0 21.5 8.5T800-770v194q0 13-8.5 21.5T770-546H576q-13 0-21.5-8.5T546-576q0-13 8.5-21.5T576-606h138q-38-60-97-97t-137-37q-109 0-184.5 75.5T220-480q0 109 75.5 184.5T480-220q75 0 140-39.5T717-366q5-11 16.5-16.5t22.5-.5q12 5 16 16.5t-1 23.5q-39 84-117.5 133.5T480-160Z" },
+};
+
+function bbIcon(name, size = 16) {
+    const ic = ICONS[name];
+    if (!ic) return "";
+    return `<svg class="bb-icon" width="${size}" height="${size}" viewBox="${ic.vb}" fill="currentColor" aria-hidden="true"><path d="${ic.d}"/></svg>`;
+}
+
 // Mac vs PC for the keyboard shortcut hint shown in the inline mnemonic form.
 const IS_MAC = typeof navigator !== "undefined"
     && /Mac|iPhone|iPad|iPod/i.test(navigator.platform || "");
@@ -120,12 +149,12 @@ function createPanel() {
         <div class="bb-header">
             <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAADmUlEQVQ4T22TbUxbVRjH/6e3t/deaGlKBLaWVSiClI2GdUtmY9mIkElY2DTiiBqJ2bR8WaImfjNGNqNGPy3GxbjEmhlA98EP2lAWFjcMboSY1owMViZWxsvWl7W19AXuvb33emjcB41PcpKT5zn//3OeX84hR12uyoSUGeF4rtbe6Bjt6X1henh4WMb/xMjIiG7h1s3upcidV4iixIyVzGfE22635ETlJw1qh4HjC1bbnjM/TP78DSFE+6+H96BzKJ/LXRQl0UB0ujm9nnmN7Bx60eMRkhBtf20mj/J6/nXCqCe5KmVdljl2p86yopyKlZoVSQoIHPdJpclyxayw8UAoVCwbPAqfr7/i5vVfz7J6pr6l1RY28bo6huFIfktLLixGD8myuuRw7j4XCISKjzRlA03TyCFnU7Olhh10tVU919BYt9/ucJEqoQidmsNmQcXKShzr66lwaD4b2Cwql2dDdyM7Y5YNXh085iRS7OMer9Dt9ViN9Q026DgroNBGUhKgOFRZxv37Wcz9li5+9+PG1dUH0rnQ/HKYnDp+3CQZMqN9h/V9J3qter6CB1VDA/XWGQC1BFLK01sqtBWBKCqYmsnIX41FJ9IZvEV6vK6hvc3spY/ebYeBN6BEzzEsA4bqNU1Hm9OEKtF8CUpJA0sL25KGTy9EtCvXY6eIZ//j02+ebjky0N+I2XACn/uXMHCiCc8fa6QOVFwSy7y+D67BP3YX773djqfcNQhcXYf/23sBcvigI3n2TOtjndY63IikMHYjiq4uOw50WJBKFkCIimoLj7lwGlPXVnH6yBPobKvBzFoC5y//sUyedjfce+elZnu/2Qq5mkVsl4RauxGra1ncvpPeIQFniwX1NhMSDzaxJ8ZCHy9h4uEG/DOpeTpC0yWv2zz0/htt4M0CYKIQDXQpIra2pTJMgWcoC7qjQFFQUHiYx/nxCGYXyRekt9Pt4gR1+mQ3axnos4IRKgHeBOgFKhChMSwVq4CYg0Z5KCqLqV8yuDi6Es8X2UHi8/nYjZXIy0ROf9jfJezue6ZWZzZxMAgCNasoA1REEbK4jXy2gOC1hDoeTMcJqfrAecDrLz+kYDDIjX994dlo9HdfrVne595XtevJljrObKRlqYh0VsLy2tb23K1sPJbCbaPR+GWFxT41OTkp/usveDx7q3OJZKskK03VFktHSVUdDNGVFFX5M5/PLzAMu9zQ6licmKAz/BN/Ay2UiQF0vyrSAAAAAElFTkSuQmCC" class="bb-logo" alt="Bunbee" />
             <span class="bb-title">Bunbee</span>
-            <button class="bb-toggle" title="Toggle panel (B)">▲</button>
+            <button class="bb-toggle" title="Toggle panel (B)" aria-label="Toggle panel">${bbIcon("keyboard_arrow_up", 16)}</button>
         </div>
         <div class="bb-body bb-collapsed">
             <div class="bb-section" id="bb-mnemonics">
                 <div class="bb-section-title">
-                    <span>🧠 Mnemonics</span>
+                    <span class="bb-title-text">${bbIcon("psychology", 16)} Mnemonics</span>
                     <button class="bb-add-btn" id="bb-add-mnemonic-btn" title="Create a new mnemonic for this item">
                         + Add
                     </button>
@@ -135,7 +164,9 @@ function createPanel() {
                 </div>
             </div>
             <div class="bb-section" id="bb-sentences">
-                <div class="bb-section-title">✨ Example sentences</div>
+                <div class="bb-section-title">
+                    <span class="bb-title-text">${bbIcon("auto_awesome", 16)} Example sentences</span>
+                </div>
                 <div class="bb-content" id="bb-sentences-content">
                     <button class="bb-btn" id="bb-generate-btn">Generate sentences</button>
                 </div>
@@ -161,7 +192,7 @@ function setPanelCollapsed(collapsed) {
     const toggle = panel.querySelector(".bb-toggle");
     if (!body || !toggle) return;
     body.classList.toggle("bb-collapsed", collapsed);
-    toggle.textContent = collapsed ? "▲" : "▼";
+    toggle.innerHTML = bbIcon(collapsed ? "keyboard_arrow_up" : "keyboard_arrow_down", 16);
 }
 
 function togglePanelCollapsed() {
@@ -267,12 +298,12 @@ function renderMnemonicCard(m) {
             <div class="bb-mnemonic-meta">
                 <span class="bb-badge bb-badge--${m.mnemonicType}">${m.mnemonicType}</span>
                 <span class="bb-badge">${m.language?.toUpperCase()}</span>
-                <span class="bb-score">▲ ${m.score}</span>
+                <span class="bb-score">${bbIcon("arrow_upward", 12)} ${m.score}</span>
             </div>
             <div class="bb-mnemonic-text">${renderHighlights(m.text)}</div>
             <div class="bb-mnemonic-author">by ${m.username}</div>
             <button class="bb-save-btn" data-id="${m.id}" data-saved="${m.isSaved}">
-                ${m.isSaved ? "✅ Saved" : "🔖 Save"}
+                ${m.isSaved ? `${bbIcon("check_circle", 14)} Saved` : `${bbIcon("bookmark_add", 14)} Save`}
             </button>
         </div>
     `;
@@ -426,7 +457,7 @@ function renderAddForm(subject) {
     return `
         <div class="bb-add-form">
             <div class="bb-form-header">
-                <button type="button" class="bb-link-btn" id="bb-add-back">← Back to list</button>
+                <button type="button" class="bb-link-btn" id="bb-add-back">${bbIcon("arrow_back", 14)} Back to list</button>
                 <span class="bb-form-subject">New mnemonic for <strong>${escapeHtml(subject?.characters ?? "")}</strong></span>
             </div>
 
@@ -445,7 +476,7 @@ function renderAddForm(subject) {
                     <span class="bb-form-label">Mnemonic</span>
                     <button type="button" class="bb-tool-btn" id="bb-add-highlight"
                             title="Wrap selection in ==…== (${HIGHLIGHT_SHORTCUT_LABEL})">
-                        ✨ Highlight (${HIGHLIGHT_SHORTCUT_LABEL})
+                        ${bbIcon("auto_awesome", 13)} Highlight (${HIGHLIGHT_SHORTCUT_LABEL})
                     </button>
                 </div>
                 <textarea id="bb-add-text" class="bb-textarea" rows="4"
@@ -658,7 +689,7 @@ async function handleGenerate() {
         return;
     }
 
-    el.innerHTML = `<span class="bb-muted">⏳ Generating…</span>`;
+    el.innerHTML = `<span class="bb-muted">${bbIcon("hourglass_top", 14)} Generating…</span>`;
 
     const prompt = `You are a Japanese language teacher. Generate 2 example sentences using the word ${subject.characters}.
 For each sentence use this exact format:
@@ -694,10 +725,10 @@ ENGLISH: [translation]
                 <button class="bb-save-sentence-btn" 
                     data-sentence='${JSON.stringify(s).replace(/'/g, "&#39;")}'
                     data-vocab="${subject.characters}">
-                    🔖 Save to Bunbee
+                    ${bbIcon("bookmark_add", 14)} Save to Bunbee
                 </button>
             </div>
-        `).join("") + `<button class="bb-btn bb-btn--secondary" id="bb-regenerate-btn">🔄 Regenerate</button>`;
+        `).join("") + `<button class="bb-btn bb-btn--secondary" id="bb-regenerate-btn">${bbIcon("refresh", 14)} Regenerate</button>`;
 
         el.querySelectorAll(".bb-save-sentence-btn").forEach((btn) => {
             btn.addEventListener("click", () => handleSaveSentence(btn));
@@ -729,7 +760,9 @@ async function handleSaveMnemonic(btn) {
             headers: { Authorization: `Bearer ${jwt}` },
         });
         btn.dataset.saved = isSaved ? "false" : "true";
-        btn.textContent = isSaved ? "🔖 Save" : "✅ Saved";
+        btn.innerHTML = isSaved
+            ? `${bbIcon("bookmark_add", 14)} Save`
+            : `${bbIcon("check_circle", 14)} Saved`;
     } catch { }
 }
 
@@ -761,7 +794,7 @@ async function handleSaveSentence(btn) {
         });
 
         if (res.ok) {
-            btn.textContent = "✅ Saved!";
+            btn.innerHTML = `${bbIcon("check_circle", 14)} Saved!`;
         } else {
             btn.textContent = "Error — try again";
             btn.disabled = false;
