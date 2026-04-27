@@ -323,28 +323,28 @@ function setupShortcuts() {
         }
 
         // "N" triggers the primary action of the active tab:
-        //   • Mnemonics tab        → click "+ Add" (open the new-mnemonic form)
-        //   • Example sentences    → click "Generate sentences" / "Try again"
-        // We look up the button live and only preventDefault when we actually
-        // find one to click, so the keystroke falls through normally on tabs
-        // where no action is currently available (e.g. sentences already
-        // generated and the Generate button has been replaced by results).
+        //   • Mnemonics tab        → open the "+ Add" form
+        //   • Example sentences    → run "Generate sentences" / "Try again"
+        // We invoke the underlying handlers directly rather than dispatching
+        // synthetic clicks: it sidesteps any subtle interaction with WK's own
+        // keyboard listeners and makes the shortcut behave identically across
+        // every WK page layout.
         if (e.key === "n" || e.key === "N") {
             if (!isPanelOpen()) return;
             const panel = document.getElementById(PANEL_ID);
             if (!panel) return;
 
-            let btn = null;
             if (TOPTAB_STATE.active === "mnemonics") {
-                btn = panel.querySelector("#bb-add-mnemonic-btn");
-                if (btn?.classList.contains("bb-add-btn--hidden")) btn = null;
-            } else if (TOPTAB_STATE.active === "sentences") {
-                btn = panel.querySelector("#bb-generate-btn");
-            }
-
-            if (btn) {
                 e.preventDefault();
-                btn.click();
+                triggerAddMnemonic();
+            } else if (TOPTAB_STATE.active === "sentences") {
+                // Only fire when the Generate button is currently in the DOM
+                // (i.e. the user hasn't already generated sentences for this
+                // subject); otherwise we let the keystroke fall through.
+                if (panel.querySelector("#bb-generate-btn")) {
+                    e.preventDefault();
+                    handleGenerate();
+                }
             }
         }
     });
@@ -406,14 +406,33 @@ function injectPanel() {
     // subject. If we can't detect a subject (e.g. user is not on a review page)
     // we fall back to opening the web app's editor in a new tab.
     panel.querySelector("#bb-add-mnemonic-btn").addEventListener("click", () => {
-        const subject = getCurrentSubject();
-        if (!subject?.subjectId) {
-            window.open(`${BUNBEE_WEB}/mnemonics/new`, "_blank", "noopener,noreferrer");
-            return;
-        }
-        ADD_FORM_STATE.open = true;
-        ADD_FORM_STATE.error = "";
-        showAddForm(subject);
+        triggerAddMnemonic();
+    });
+}
+
+// Single source of truth for "open the new-mnemonic form". Used by both the
+// "+ Add" button click handler and the "N" keyboard shortcut so they stay in
+// sync. We avoid relying on `btn.click()` from the shortcut path because that
+// dispatches a synthetic event whose timing/ordering can interact with WK's
+// own keydown listeners in subtle ways — calling the action directly is both
+// simpler and more deterministic.
+function triggerAddMnemonic() {
+    const subject = getCurrentSubject();
+    if (!subject?.subjectId) {
+        window.open(`${BUNBEE_WEB}/mnemonics/new`, "_blank", "noopener,noreferrer");
+        return;
+    }
+    ADD_FORM_STATE.open = true;
+    ADD_FORM_STATE.error = "";
+    showAddForm(subject);
+
+    // Move focus into the textarea so the user can start typing immediately —
+    // matches the muscle memory of "press N to add" (similar to how WK's "F"
+    // shortcut focuses the subject info area). Done on the next animation
+    // frame so the form has been rendered into the DOM by then.
+    requestAnimationFrame(() => {
+        const ta = document.querySelector("#bb-add-text");
+        if (ta) ta.focus();
     });
 }
 
