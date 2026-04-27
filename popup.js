@@ -51,9 +51,13 @@ async function handleLogin() {
         if (!res.ok) throw new Error("Invalid token or server error.");
         const data = await res.json();
 
+        // Persist the WK token alongside the Bunbee JWT. The content script
+        // needs it to call https://api.wanikani.com/v2/subjects/{id} for
+        // readings/meanings (the same endpoint the web app uses).
         chrome.storage.local.set({
             bunbee_jwt: data.token,
             bunbee_username: data.username,
+            wk_token: token,
         }, () => {
             renderLoggedIn(data.username);
         });
@@ -64,7 +68,7 @@ async function handleLogin() {
 }
 
 function handleLogout() {
-    chrome.storage.local.remove(["bunbee_jwt", "bunbee_username"], () => {
+    chrome.storage.local.remove(["bunbee_jwt", "bunbee_username", "wk_token"], () => {
         renderLogin();
     });
 }

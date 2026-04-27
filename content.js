@@ -191,32 +191,64 @@ function getCurrentReadings(root = document) {
 }
 
 // Cache of readings keyed by subjectId. Populated either by the live DOM
-// scrape (when readings are visible after answer) or by an async fetch of
-// the subject's public WK page (when they are not). Persisting the readings
-// here means that the inline "+ Add" form always has them available,
-// regardless of where in the review flow the user opened it.
+// scrape (when readings are visible after answer) or by an async call to
+// the WaniKani v2 API. Persisting them here means that the inline "+ Add"
+// form always has them available, regardless of where in the review flow
+// the user opened it.
 const SUBJECT_READINGS_CACHE = new Map();
 
-// Async: fetch the subject's WK page and parse readings from its server-
-// rendered HTML. We rely on the user's existing WK session cookies (the
-// content script runs on www.wanikani.com) and on the host_permissions
-// declared in manifest.json. Returns [] if the request fails or no
-// readings are found — never throws.
+function getWkToken() {
+    return new Promise((resolve) => {
+        chrome.storage.local.get("wk_token", (result) => {
+            resolve(result.wk_token ?? null);
+        });
+    });
+}
+
+// Async: fetch the subject by id from WaniKani's official v2 API and pull
+// every reading off the JSON response. Mirrors the approach used by the
+// web app in lib/api.js (`https://api.wanikani.com/v2/subjects?ids=...`)
+// so behaviour is identical across surfaces. Returns [] on any failure
+// (no token, network error, non-2xx) — never throws.
 async function fetchSubjectReadings(subjectId) {
     if (!subjectId) return [];
     if (SUBJECT_READINGS_CACHE.has(subjectId)) {
         return SUBJECT_READINGS_CACHE.get(subjectId);
     }
+    const token = await getWkToken();
+    if (!token) {
+        // The user probably installed the extension before we started
+        // persisting the WK token in the popup. Surface a helpful hint
+        // exactly once per session and then bail.
+        if (!fetchSubjectReadings._warnedNoToken) {
+            console.warn("[Bunbee] No WaniKani API token stored — open the extension popup and re-enter your token to enable readings.");
+            fetchSubjectReadings._warnedNoToken = true;
+        }
+        return [];
+    }
     try {
-        const res = await fetch(`https://www.wanikani.com/subjects/${subjectId}`, {
-            credentials: "include",
+        const res = await fetch(`https://api.wanikani.com/v2/subjects/${subjectId}`, {
+            headers: { Authorization: `Bearer ${token}` },
         });
-        if (!res.ok) return [];
-        const html = await res.text();
-        const doc = new DOMParser().parseFromString(html, "text/html");
-        const readings = getCurrentReadings(doc);
-        SUBJECT_READINGS_CACHE.set(subjectId, readings);
-        return readings;
+        if (!res.ok) {
+            console.warn("[Bunbee] WK subjects API returned", res.status);
+            return [];
+        }
+        const data = await res.json();
+        const readings = Array.isArray(data?.data?.readings)
+            ? data.data.readings.map((r) => r.reading).filter(Boolean)
+            : [];
+        // Dedupe while preserving the API's order (which puts primary
+        // readings first — handy for the "+ Add" toolbar).
+        const seen = new Set();
+        const unique = [];
+        for (const r of readings) {
+            if (seen.has(r)) continue;
+            seen.add(r);
+            unique.push(r);
+        }
+        SUBJECT_READINGS_CACHE.set(subjectId, unique);
+        return unique;
     } catch (err) {
         console.warn("[Bunbee] fetchSubjectReadings failed:", err);
         return [];
