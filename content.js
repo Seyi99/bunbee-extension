@@ -205,17 +205,37 @@ function togglePanelCollapsed() {
 
 // "B" toggles the panel. We ignore the keystroke when the user is actively
 // typing in WK's answer field so we don't swallow the "b" of e.g. "ba" → ば.
-// We DO accept the shortcut when the input is in WK's "answered" state
-// (readonly / disabled / wrapped in a `--correct`/`--incorrect` container) so
-// it works alongside WK's own post-answer shortcuts like "F" (subject info).
+// We DO accept the shortcut when the input is in WK's "answered" state so it
+// works alongside WK's own post-answer shortcuts like "F" (subject info).
+//
+// WK signals the answered state in several ways depending on layout/version:
+//   • `disabled` / `readonly` properties on the <input>
+//   • `aria-readonly="true"` on the <input>
+//   • a non-standard `enabled="false"` attribute on the <input>
+//   • `.quiz-input--correct` / `--incorrect` modifier class on an ancestor
+//   • `correct="true"` / `incorrect="true"` attribute on the input container
+//     (data-quiz-input-target="inputContainer") — this is the current variant
+//   • `.complete` / `.answered` on an ancestor (older layouts)
+// If ANY of these are true we let the shortcut fire even when the input still
+// has focus, so the user doesn't have to click somewhere else first.
+function isAnsweredInput(target) {
+    if (target.readOnly || target.disabled) return true;
+    if (target.getAttribute("aria-readonly") === "true") return true;
+    if (target.getAttribute("enabled") === "false") return true;
+    if (target.closest(".quiz-input--correct, .quiz-input--incorrect, .complete, .answered")) return true;
+    // Container-level attribute variant.
+    if (target.closest(
+        "[data-quiz-input-target='inputContainer'][correct='true'], " +
+        "[data-quiz-input-target='inputContainer'][incorrect='true']"
+    )) return true;
+    return false;
+}
+
 function isUserTyping(target) {
     if (!target) return false;
     const tag = target.tagName?.toLowerCase();
     if (tag === "input" || tag === "textarea") {
-        if (target.readOnly || target.disabled) return false;
-        if (target.getAttribute("aria-readonly") === "true") return false;
-        if (target.closest(".quiz-input--correct, .quiz-input--incorrect, .complete, .answered")) return false;
-        return true;
+        return !isAnsweredInput(target);
     }
     if (tag === "select") return true;
     if (target.isContentEditable) return true;
