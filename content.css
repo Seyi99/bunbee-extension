@@ -104,6 +104,70 @@
     gap: 8px;
 }
 
+/* ─── Top-level tabs (Mnemonics / Example sentences) ──────────────────────── */
+/* Sit on top of the body, share a single bottom border, and host the contextual
+   "+ Add" button on the right side (only shown for the Mnemonics tab). */
+
+.bb-toptabs {
+    display: flex;
+    align-items: stretch;
+    border-bottom: 1px solid #c8ddb0;
+}
+
+.bb-toptab {
+    appearance: none;
+    background: none;
+    border: none;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #7a8c72;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    /* Pull the underline down so it overlaps the parent's 1px border, giving
+       the active-tab indicator a clean "stuck-on" look. */
+    margin-bottom: -1px;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    transition: color 0.12s, border-color 0.12s;
+}
+
+.bb-toptab:hover {
+    color: #2c3830;
+}
+
+.bb-toptab--active {
+    color: #2c3830;
+    font-weight: 600;
+    border-bottom-color: #8faf72;
+}
+
+.bb-toptab-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Tab panels use a class instead of inline `style="display:none"` to comply
+   with WaniKani's CSP (`style-src 'self'`). */
+.bb-toptab-panel--hidden {
+    display: none;
+}
+
+/* The "+ Add" button rides at the end of the tab strip, right-aligned, and
+   is hidden on tabs where it doesn't apply (e.g. Example sentences). */
+.bb-toptabs .bb-add-btn {
+    margin-left: auto;
+    align-self: center;
+}
+
+.bb-add-btn--hidden {
+    display: none;
+}
+
 /* "+ Add" action shown on the right side of the Mnemonics section title.
    Opens the web app's new-mnemonic page for the current subject. */
 .bb-add-btn {

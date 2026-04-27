@@ -68,6 +68,51 @@ const ADD_FORM_STATE = {
     submitting: false,
 };
 
+// ─── Top-level tabs (Mnemonics / Example sentences) ──────────────────────────
+// Tracks which top-level tab is currently visible inside the panel body. Kept
+// at module scope so the active tab survives subject changes within a session.
+const TOPTAB_ORDER = ["mnemonics", "sentences"];
+const TOPTAB_STATE = { active: "mnemonics" };
+
+// Sets the active top-level tab. Updates the buttons (active class +
+// aria-selected), shows/hides the matching panel, and toggles the visibility
+// of the "+ Add" button (only relevant on the Mnemonics tab).
+function setActiveTopTab(name) {
+    if (!TOPTAB_ORDER.includes(name)) return;
+    TOPTAB_STATE.active = name;
+
+    const panel = document.getElementById(PANEL_ID);
+    if (!panel) return;
+
+    panel.querySelectorAll(".bb-toptab").forEach((btn) => {
+        const isActive = btn.dataset.toptab === name;
+        btn.classList.toggle("bb-toptab--active", isActive);
+        btn.setAttribute("aria-selected", isActive ? "true" : "false");
+        // Negative tabindex on inactive tabs is the standard ARIA pattern for
+        // tablists — Tab/Shift+Tab moves focus past the inactive ones.
+        btn.tabIndex = isActive ? 0 : -1;
+    });
+
+    panel.querySelectorAll(".bb-toptab-panel").forEach((el) => {
+        el.classList.toggle("bb-toptab-panel--hidden", el.dataset.toptabPanel !== name);
+    });
+
+    const addBtn = panel.querySelector("#bb-add-mnemonic-btn");
+    if (addBtn) addBtn.classList.toggle("bb-add-btn--hidden", name !== "mnemonics");
+}
+
+// Switches to the next/previous tab. `direction` is +1 (next) or -1 (prev).
+function cycleTopTab(direction) {
+    const idx = TOPTAB_ORDER.indexOf(TOPTAB_STATE.active);
+    const next = (idx + direction + TOPTAB_ORDER.length) % TOPTAB_ORDER.length;
+    setActiveTopTab(TOPTAB_ORDER[next]);
+}
+
+function isPanelOpen() {
+    const body = document.querySelector(`#${PANEL_ID} .bb-body`);
+    return !!body && !body.classList.contains("bb-collapsed");
+}
+
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
 function getJwt() {
@@ -152,21 +197,34 @@ function createPanel() {
             <button class="bb-toggle" title="Toggle panel (B)" aria-label="Toggle panel">${bbIcon("keyboard_arrow_up", 16)}</button>
         </div>
         <div class="bb-body bb-collapsed">
-            <div class="bb-section" id="bb-mnemonics">
-                <div class="bb-section-title">
-                    <span class="bb-title-text">${bbIcon("psychology", 16)} Mnemonics</span>
-                    <button class="bb-add-btn" id="bb-add-mnemonic-btn" title="Create a new mnemonic for this item">
-                        + Add
-                    </button>
-                </div>
+            <div class="bb-toptabs" role="tablist" aria-label="Bunbee sections">
+                <button type="button" class="bb-toptab bb-toptab--active"
+                        id="bb-toptab-mnemonics" role="tab" aria-selected="true"
+                        aria-controls="bb-toptab-panel-mnemonics" data-toptab="mnemonics"
+                        title="Mnemonics (← →)">
+                    ${bbIcon("psychology", 16)} Mnemonics
+                </button>
+                <button type="button" class="bb-toptab"
+                        id="bb-toptab-sentences" role="tab" aria-selected="false"
+                        aria-controls="bb-toptab-panel-sentences" data-toptab="sentences"
+                        title="Example sentences (← →)">
+                    ${bbIcon("auto_awesome", 16)} Example sentences
+                </button>
+                <button type="button" class="bb-add-btn" id="bb-add-mnemonic-btn"
+                        title="Create a new mnemonic for this item">
+                    + Add
+                </button>
+            </div>
+            <div class="bb-toptab-panel"
+                 id="bb-toptab-panel-mnemonics" role="tabpanel"
+                 aria-labelledby="bb-toptab-mnemonics" data-toptab-panel="mnemonics">
                 <div class="bb-content" id="bb-mnemonics-content">
                     <span class="bb-muted">Loading…</span>
                 </div>
             </div>
-            <div class="bb-section" id="bb-sentences">
-                <div class="bb-section-title">
-                    <span class="bb-title-text">${bbIcon("auto_awesome", 16)} Example sentences</span>
-                </div>
+            <div class="bb-toptab-panel bb-toptab-panel--hidden"
+                 id="bb-toptab-panel-sentences" role="tabpanel"
+                 aria-labelledby="bb-toptab-sentences" data-toptab-panel="sentences">
                 <div class="bb-content" id="bb-sentences-content">
                     <button class="bb-btn" id="bb-generate-btn">Generate sentences</button>
                 </div>
@@ -246,9 +304,21 @@ function setupShortcuts() {
     document.addEventListener("keydown", (e) => {
         if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
         if (isUserTyping(e.target)) return;
+
         if (e.key === "b" || e.key === "B") {
             e.preventDefault();
             togglePanelCollapsed();
+            return;
+        }
+
+        // ←/→ cycle the top-level tabs (Mnemonics ↔ Example sentences) but
+        // only while the panel is open, so we don't hijack arrow keys when
+        // the user has the panel collapsed and is doing something else on
+        // the WK page (e.g. arrow-key scrolling).
+        if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+            if (!isPanelOpen()) return;
+            e.preventDefault();
+            cycleTopTab(e.key === "ArrowRight" ? 1 : -1);
         }
     });
 }
@@ -283,6 +353,22 @@ function injectPanel() {
     panel.querySelector(".bb-header").addEventListener("click", () => {
         togglePanelCollapsed();
     });
+
+    // Top-level tab switching. We stop propagation on the buttons themselves
+    // because tab clicks shouldn't bubble up to anything (the header has its
+    // own listener but isn't an ancestor of these buttons; we still keep
+    // stopPropagation as defense-in-depth in case the layout is ever nested).
+    panel.querySelectorAll(".bb-toptab").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            setActiveTopTab(btn.dataset.toptab);
+        });
+    });
+
+    // Apply the initial active tab — handles the case where the user already
+    // had the sentences tab selected before a refresh: TOPTAB_STATE persists
+    // across re-injections within the same SPA session.
+    setActiveTopTab(TOPTAB_STATE.active);
 
     // Generate button
     panel.querySelector("#bb-generate-btn").addEventListener("click", () => {
@@ -875,6 +961,11 @@ function onSubjectChange() {
     ADD_FORM_STATE.open = false;
     ADD_FORM_STATE.text = "";
     ADD_FORM_STATE.error = "";
+
+    // Reset to the Mnemonics tab on every new subject — that's the more
+    // common starting point and matches what most users expect when a card
+    // changes. Sentences require an explicit Generate click anyway.
+    setActiveTopTab("mnemonics");
 
     // Per the user's preference: panel always starts hidden on a new review
     // (or when the question type flips). Press B or click the toggle to open.
