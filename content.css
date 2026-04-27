@@ -11,6 +11,24 @@
     width: 100%;
     box-sizing: border-box;
     overflow: hidden;
+    /* Establish a stacking context and force pointer-events on so that any
+       page-level CSS from WaniKani (or a competing userscript) cannot
+       accidentally block clicks from reaching our delegated listener. */
+    position: relative;
+    z-index: 1;
+    pointer-events: auto;
+}
+
+/* Belt-and-braces: make sure every interactive control inside the panel can
+   receive pointer events. Some WaniKani pages declare broad `button { ... }`
+   rules; we override by name to keep clicks working everywhere we wire up
+   handlers. */
+#bunbee-panel button,
+#bunbee-panel .bb-header,
+#bunbee-panel .bb-toptab,
+#bunbee-panel .bb-toptabs,
+#bunbee-panel .bb-add-btn {
+    pointer-events: auto;
 }
 
 /* ─── Inline Material Symbols (SVG) ──────────────────────────────────────────

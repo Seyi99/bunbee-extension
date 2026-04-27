@@ -144,16 +144,24 @@ function getCurrentSubject() {
     if (body.classList.contains("radical") || document.querySelector(".radical")) subjectType = "radical";
     else if (body.classList.contains("kanji") || document.querySelector(".kanji")) subjectType = "kanji";
 
-    return { subjectId, characters, subjectType, readings: getCurrentReadings() };
+    // Prefer live DOM readings (fresh, post-answer reveal). If the live DOM
+    // doesn't have them yet, fall back to whatever the readings cache picked
+    // up from a background fetch of the subject's WK page. Either way the
+    // returned array is deduped and may be empty.
+    let readings = getCurrentReadings();
+    if (readings.length === 0 && subjectId && SUBJECT_READINGS_CACHE.has(subjectId)) {
+        readings = SUBJECT_READINGS_CACHE.get(subjectId);
+    }
+
+    return { subjectId, characters, subjectType, readings };
 }
 
-// Pulls the readings of the current subject from WaniKani's DOM. Readings are
-// usually only present after the user has answered (WK reveals them in the
-// post-answer info panel) — we just return whatever we find, deduped, and the
-// callers handle the empty case gracefully (they simply don't render any
-// reading buttons). We try several selectors because WK's layout class names
-// have changed over the years and across page variants.
-function getCurrentReadings() {
+// Pulls the readings of the current subject from WaniKani's DOM. During an
+// active review WK only reveals readings *after* the user has answered, so
+// this is a best-effort scrape — callers must be prepared for an empty
+// result and fall back to `fetchSubjectReadings` (which loads them from
+// the subject's public page).
+function getCurrentReadings(root = document) {
     const out = [];
     const seen = new Set();
     const selectors = [
@@ -163,9 +171,12 @@ function getCurrentReadings() {
         ".subject-info-list--readings .subject-info-list__item-value",
         ".reading .reading-with-okurigana",
         "[data-reading-target='primary'] + dd",
+        // Newer Stimulus-based subject page layout.
+        ".subject-readings__reading-items .subject-readings__reading-item",
+        ".subject-readings .reading",
     ];
     for (const sel of selectors) {
-        document.querySelectorAll(sel).forEach((el) => {
+        root.querySelectorAll(sel).forEach((el) => {
             const text = el.textContent?.trim();
             // Defensive filters: skip empty, very long blocks (probably a wrong
             // selector match), and anything that looks like a label/sentence.
@@ -177,6 +188,39 @@ function getCurrentReadings() {
         });
     }
     return out;
+}
+
+// Cache of readings keyed by subjectId. Populated either by the live DOM
+// scrape (when readings are visible after answer) or by an async fetch of
+// the subject's public WK page (when they are not). Persisting the readings
+// here means that the inline "+ Add" form always has them available,
+// regardless of where in the review flow the user opened it.
+const SUBJECT_READINGS_CACHE = new Map();
+
+// Async: fetch the subject's WK page and parse readings from its server-
+// rendered HTML. We rely on the user's existing WK session cookies (the
+// content script runs on www.wanikani.com) and on the host_permissions
+// declared in manifest.json. Returns [] if the request fails or no
+// readings are found — never throws.
+async function fetchSubjectReadings(subjectId) {
+    if (!subjectId) return [];
+    if (SUBJECT_READINGS_CACHE.has(subjectId)) {
+        return SUBJECT_READINGS_CACHE.get(subjectId);
+    }
+    try {
+        const res = await fetch(`https://www.wanikani.com/subjects/${subjectId}`, {
+            credentials: "include",
+        });
+        if (!res.ok) return [];
+        const html = await res.text();
+        const doc = new DOMParser().parseFromString(html, "text/html");
+        const readings = getCurrentReadings(doc);
+        SUBJECT_READINGS_CACHE.set(subjectId, readings);
+        return readings;
+    } catch (err) {
+        console.warn("[Bunbee] fetchSubjectReadings failed:", err);
+        return [];
+    }
 }
 
 // Returns "meaning" | "reading" | null. WaniKani exposes the active question
@@ -405,44 +449,51 @@ function injectPanel() {
         document.body.appendChild(panel);
     }
 
-    // Toggle collapse on any click inside the header (logo, title, caret).
-    // Listening on the header instead of just the .bb-toggle button means the
-    // whole strip becomes a hit target, which matches the user's expectation.
-    // The button still bubbles up here, so we don't need a separate handler.
-    panel.querySelector(".bb-header").addEventListener("click", () => {
-        togglePanelCollapsed();
-    });
-
-    // Top-level tab switching via event delegation on the tab strip itself.
-    // We use delegation (instead of per-button listeners) because:
-    //   • A click target can be the SVG icon or its <path>, not the button —
-    //     `.closest(".bb-toptab")` reliably walks up to the actual tab.
-    //   • The listener survives any future DOM mutations of the tab strip.
-    //   • There is exactly one listener registered per panel, regardless of
-    //     how many tabs we add later.
-    panel.querySelector(".bb-toptabs").addEventListener("click", (e) => {
+    // Single delegated click listener for the entire panel. Using one listener
+    // on the panel root (instead of per-element listeners) makes the wiring
+    // bulletproof against a few subtle issues we've hit:
+    //   • Per-button listeners can stop firing if something replaces the
+    //     element (the listener stays on the orphaned node).
+    //   • WaniKani's page CSS occasionally sets `pointer-events: none` on
+    //     deeply-nested `button > svg` graphs; delegating up to the panel
+    //     root ensures any click inside the panel reaches us.
+    //   • Click targets can be SVG paths inside icons; `.closest()` walks up
+    //     to whichever logical action the user actually meant.
+    panel.addEventListener("click", (e) => {
+        // 1) "+ Add" button — must be checked BEFORE the toptab branch
+        //    because the button lives inside .bb-toptabs as a sibling of
+        //    the actual tabs.
+        if (e.target.closest("#bb-add-mnemonic-btn")) {
+            e.stopPropagation();
+            triggerAddMnemonic();
+            return;
+        }
+        // 2) Top-level tab switch (Mnemonics / Example sentences)
         const tab = e.target.closest(".bb-toptab");
-        if (!tab) return; // clicked the "+ Add" button, gap, or empty area
-        e.stopPropagation();
-        setActiveTopTab(tab.dataset.toptab);
+        if (tab) {
+            e.stopPropagation();
+            setActiveTopTab(tab.dataset.toptab);
+            return;
+        }
+        // 3) Generate sentences button. Looked up live because it gets
+        //    re-rendered (replaced or rewritten) when sentences load,
+        //    fail, or are reset on subject change.
+        if (e.target.closest("#bb-generate-btn")) {
+            e.stopPropagation();
+            handleGenerate();
+            return;
+        }
+        // 4) Anywhere else inside the header → toggle collapse.
+        if (e.target.closest(".bb-header")) {
+            togglePanelCollapsed();
+            return;
+        }
     });
 
     // Apply the initial active tab — handles the case where the user already
     // had the sentences tab selected before a refresh: TOPTAB_STATE persists
     // across re-injections within the same SPA session.
     setActiveTopTab(TOPTAB_STATE.active);
-
-    // Generate button
-    panel.querySelector("#bb-generate-btn").addEventListener("click", () => {
-        handleGenerate();
-    });
-
-    // "+ Add mnemonic" — opens an inline form inside the panel for the current
-    // subject. If we can't detect a subject (e.g. user is not on a review page)
-    // we fall back to opening the web app's editor in a new tab.
-    panel.querySelector("#bb-add-mnemonic-btn").addEventListener("click", () => {
-        triggerAddMnemonic();
-    });
 }
 
 // Single source of truth for "open the new-mnemonic form". Used by both the
@@ -451,24 +502,41 @@ function injectPanel() {
 // dispatches a synthetic event whose timing/ordering can interact with WK's
 // own keydown listeners in subtle ways — calling the action directly is both
 // simpler and more deterministic.
-function triggerAddMnemonic() {
+async function triggerAddMnemonic() {
     const subject = getCurrentSubject();
     if (!subject?.subjectId) {
         window.open(`${BUNBEE_WEB}/mnemonics/new`, "_blank", "noopener,noreferrer");
         return;
     }
+
+    // Render the form immediately with whatever we have (so the UI feels
+    // snappy), then enrich with readings asynchronously if the DOM didn't
+    // expose any yet. Radicals never have readings, so skip the fetch for
+    // them entirely.
     ADD_FORM_STATE.open = true;
     ADD_FORM_STATE.error = "";
     showAddForm(subject);
 
-    // Move focus into the textarea so the user can start typing immediately —
-    // matches the muscle memory of "press N to add" (similar to how WK's "F"
-    // shortcut focuses the subject info area). Done on the next animation
-    // frame so the form has been rendered into the DOM by then.
     requestAnimationFrame(() => {
         const ta = document.querySelector("#bb-add-text");
         if (ta) ta.focus();
     });
+
+    if (subject.subjectType !== "radical"
+        && (!subject.readings || subject.readings.length === 0)) {
+        const readings = await fetchSubjectReadings(subject.subjectId);
+        if (readings.length === 0) return;
+        // Only re-render if the form is still open for the same subject —
+        // the user might have closed the form or moved to the next card
+        // while we were fetching.
+        if (!ADD_FORM_STATE.open) return;
+        const current = getCurrentSubject();
+        if (current?.subjectId !== subject.subjectId) return;
+        // Preserve whatever the user has already typed.
+        const ta = document.querySelector("#bb-add-text");
+        if (ta) ADD_FORM_STATE.text = ta.value;
+        showAddForm({ ...subject, readings });
+    }
 }
 
 // ─── Load mnemonics ───────────────────────────────────────────────────────────
@@ -1086,11 +1154,20 @@ function onSubjectChange() {
     lastQuestionType = questionType;
     console.log("[Bunbee] Subject/question changed:", { ...subject, questionType });
 
-    // Reset sentences section
+    // Reset sentences section. The "Generate sentences" button doesn't need
+    // its own listener — clicks bubble up to the panel-level delegated
+    // handler that dispatches by id.
     const sentencesEl = document.getElementById("bb-sentences-content");
     if (sentencesEl) {
         sentencesEl.innerHTML = `<button class="bb-btn" id="bb-generate-btn">Generate sentences</button>`;
-        sentencesEl.querySelector("#bb-generate-btn")?.addEventListener("click", handleGenerate);
+    }
+
+    // Warm the readings cache in the background so the "+ Add" form has
+    // them ready even if the user hits N before answering. Skipped for
+    // radicals (they have no readings) and ignored on failure — the form
+    // will still open with the character button.
+    if (subject.subjectType !== "radical" && (!subject.readings || subject.readings.length === 0)) {
+        fetchSubjectReadings(subject.subjectId).catch(() => {});
     }
 
     // If the user had the inline "new mnemonic" form open for the previous
