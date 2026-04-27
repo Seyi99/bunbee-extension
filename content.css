@@ -543,6 +543,65 @@
     background: #e4eedd;
 }
 
+/* Right-side group inside the form toolbar — holds Highlight and the
+   insert-at-cursor buttons (character + readings). Wraps to the next line
+   on narrow widths so the label stays on the left and the actions never
+   overflow the panel. */
+.bb-toolbar-actions {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-end;
+}
+
+/* Thin vertical separator between Highlight and the insert buttons, mirrors
+   the divider used in the web app's mnemonics/new editor. */
+.bb-toolbar-divider {
+    display: inline-block;
+    width: 1px;
+    height: 16px;
+    background: #c8ddb0;
+    flex-shrink: 0;
+}
+
+/* Per-reading insert button. Compact rounded chip; clicking inserts the
+   reading at the textarea's caret. */
+.bb-insert-btn {
+    appearance: none;
+    background: #fff;
+    color: #2c3830;
+    border: 1px solid #c8ddb0;
+    border-radius: 5px;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    line-height: 1.4;
+    transition: background 0.12s, border-color 0.12s;
+}
+
+.bb-insert-btn:hover {
+    background: #f2f7ec;
+    border-color: #8faf72;
+}
+
+/* The "characters" button gets the bunbee accent treatment so the user can
+   spot it at a glance — same affordance used in the web app's editor. */
+.bb-insert-btn--char {
+    background: #eaf3df;
+    border-color: #b5d098;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 1px 9px;
+}
+
+.bb-insert-btn--char:hover {
+    background: #dceace;
+    border-color: #8faf72;
+}
+
 .bb-textarea {
     width: 100%;
     box-sizing: border-box;

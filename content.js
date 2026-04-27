@@ -144,7 +144,39 @@ function getCurrentSubject() {
     if (body.classList.contains("radical") || document.querySelector(".radical")) subjectType = "radical";
     else if (body.classList.contains("kanji") || document.querySelector(".kanji")) subjectType = "kanji";
 
-    return { subjectId, characters, subjectType };
+    return { subjectId, characters, subjectType, readings: getCurrentReadings() };
+}
+
+// Pulls the readings of the current subject from WaniKani's DOM. Readings are
+// usually only present after the user has answered (WK reveals them in the
+// post-answer info panel) — we just return whatever we find, deduped, and the
+// callers handle the empty case gracefully (they simply don't render any
+// reading buttons). We try several selectors because WK's layout class names
+// have changed over the years and across page variants.
+function getCurrentReadings() {
+    const out = [];
+    const seen = new Set();
+    const selectors = [
+        ".subject-readings__primary-reading",
+        ".subject-readings__reading",
+        ".subject-info-list--readings dd",
+        ".subject-info-list--readings .subject-info-list__item-value",
+        ".reading .reading-with-okurigana",
+        "[data-reading-target='primary'] + dd",
+    ];
+    for (const sel of selectors) {
+        document.querySelectorAll(sel).forEach((el) => {
+            const text = el.textContent?.trim();
+            // Defensive filters: skip empty, very long blocks (probably a wrong
+            // selector match), and anything that looks like a label/sentence.
+            if (!text || text.length > 30) return;
+            if (/^\s*reading[s]?\s*$/i.test(text)) return;
+            if (seen.has(text)) return;
+            seen.add(text);
+            out.push(text);
+        });
+    }
+    return out;
 }
 
 // Returns "meaning" | "reading" | null. WaniKani exposes the active question
@@ -381,15 +413,18 @@ function injectPanel() {
         togglePanelCollapsed();
     });
 
-    // Top-level tab switching. We stop propagation on the buttons themselves
-    // because tab clicks shouldn't bubble up to anything (the header has its
-    // own listener but isn't an ancestor of these buttons; we still keep
-    // stopPropagation as defense-in-depth in case the layout is ever nested).
-    panel.querySelectorAll(".bb-toptab").forEach((btn) => {
-        btn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            setActiveTopTab(btn.dataset.toptab);
-        });
+    // Top-level tab switching via event delegation on the tab strip itself.
+    // We use delegation (instead of per-button listeners) because:
+    //   • A click target can be the SVG icon or its <path>, not the button —
+    //     `.closest(".bb-toptab")` reliably walks up to the actual tab.
+    //   • The listener survives any future DOM mutations of the tab strip.
+    //   • There is exactly one listener registered per panel, regardless of
+    //     how many tabs we add later.
+    panel.querySelector(".bb-toptabs").addEventListener("click", (e) => {
+        const tab = e.target.closest(".bb-toptab");
+        if (!tab) return; // clicked the "+ Add" button, gap, or empty area
+        e.stopPropagation();
+        setActiveTopTab(tab.dataset.toptab);
     });
 
     // Apply the initial active tab — handles the case where the user already
@@ -606,6 +641,27 @@ function renderAddForm(subject) {
         ? `<div class="bb-form-error">${escapeHtml(ADD_FORM_STATE.error)}</div>`
         : "";
 
+    // Insert-at-cursor toolbar buttons mirror the web app's mnemonics/new
+    // editor: a primary button for the subject's characters and one button
+    // per known reading. Readings are extracted from WK's DOM at form-render
+    // time (typically only available after the user has answered).
+    const charButton = subject?.characters
+        ? `<button type="button" class="bb-insert-btn bb-insert-btn--char" data-insert="${escapeHtml(subject.characters)}"
+                   title="Insert &quot;${escapeHtml(subject.characters)}&quot;">
+                ${escapeHtml(subject.characters)}
+            </button>`
+        : "";
+    const readings = Array.isArray(subject?.readings) ? subject.readings : [];
+    const readingButtons = readings.map((r) => `
+        <button type="button" class="bb-insert-btn" data-insert="${escapeHtml(r)}"
+                title="Insert reading &quot;${escapeHtml(r)}&quot;">
+            ${escapeHtml(r)}
+        </button>
+    `).join("");
+    const insertDivider = (charButton || readingButtons)
+        ? `<span class="bb-toolbar-divider" aria-hidden="true"></span>`
+        : "";
+
     return `
         <div class="bb-add-form">
             <div class="bb-form-header">
@@ -626,10 +682,15 @@ function renderAddForm(subject) {
             <div class="bb-form-row">
                 <div class="bb-form-toolbar">
                     <span class="bb-form-label">Mnemonic</span>
-                    <button type="button" class="bb-tool-btn" id="bb-add-highlight"
-                            title="Wrap selection in ==…== (${HIGHLIGHT_SHORTCUT_LABEL})">
-                        ${bbIcon("auto_awesome", 13)} Highlight (${HIGHLIGHT_SHORTCUT_LABEL})
-                    </button>
+                    <div class="bb-toolbar-actions">
+                        <button type="button" class="bb-tool-btn" id="bb-add-highlight"
+                                title="Wrap selection in ==…== (${HIGHLIGHT_SHORTCUT_LABEL})">
+                            ${bbIcon("auto_awesome", 13)} Highlight (${HIGHLIGHT_SHORTCUT_LABEL})
+                        </button>
+                        ${insertDivider}
+                        ${charButton}
+                        ${readingButtons}
+                    </div>
                 </div>
                 <textarea id="bb-add-text" class="bb-textarea" rows="4"
                     placeholder="Write your mnemonic. Wrap key words with ==text== to highlight them.">${escapeHtml(ADD_FORM_STATE.text)}</textarea>
@@ -652,6 +713,25 @@ function renderAddForm(subject) {
             </div>
         </div>
     `;
+}
+
+// Inserts `insertion` at the textarea's current cursor position (replacing
+// any current selection) and places the cursor right after the inserted text.
+// Mirrors the main app's `insertAtCursor` in MnemonicsTab.jsx so the editor
+// behaves identically across both surfaces.
+function insertAtCursor(ta, insertion) {
+    if (!ta || !insertion) return;
+    const text = ta.value;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const next = text.slice(0, start) + insertion + text.slice(end);
+    ta.value = next;
+    ADD_FORM_STATE.text = next;
+    requestAnimationFrame(() => {
+        ta.focus();
+        const pos = start + insertion.length;
+        ta.setSelectionRange(pos, pos);
+    });
 }
 
 // Wraps the current textarea selection in ==...==, or toggles them off if the
@@ -738,6 +818,17 @@ function showAddForm(subject) {
 
     el.querySelector("#bb-add-highlight")?.addEventListener("click", () => {
         if (ta) applyHighlightToTextarea(ta);
+    });
+
+    // Insert-at-cursor toolbar buttons. Delegated on the toolbar so a single
+    // listener handles the character button and any number of reading buttons.
+    el.querySelector(".bb-form-toolbar")?.addEventListener("click", (e) => {
+        const btn = e.target.closest(".bb-insert-btn");
+        if (!btn || !ta) return;
+        const insertion = btn.dataset.insert;
+        if (!insertion) return;
+        captureInputs();
+        insertAtCursor(ta, insertion);
     });
 
     const closeForm = () => {
