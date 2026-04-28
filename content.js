@@ -591,16 +591,27 @@ async function triggerAddMnemonic() {
 const TAB_STATE = { active: "public" };
 
 function renderMnemonicCard(m) {
+    // Every server-supplied string is funneled through escapeHtml before
+    // hitting innerHTML. Mnemonic text and usernames come from other users
+    // and would otherwise execute arbitrary HTML/JS in the wanikani.com
+    // origin (content scripts share the page DOM). renderHighlights also
+    // escapes internally so == … == still produces a <mark>, but anything
+    // else is rendered as inert text.
+    const safeType = escapeHtml(m.mnemonicType ?? "");
+    const safeLang = escapeHtml(String(m.language ?? "").toUpperCase());
+    const safeUsername = escapeHtml(m.username ?? "");
+    const safeId = escapeHtml(String(m.id ?? ""));
+    const safeIsSaved = escapeHtml(String(!!m.isSaved));
     return `
         <div class="bb-mnemonic">
             <div class="bb-mnemonic-meta">
-                <span class="bb-badge bb-badge--${m.mnemonicType}">${m.mnemonicType}</span>
-                <span class="bb-badge">${m.language?.toUpperCase()}</span>
-                <span class="bb-score">${bbIcon("arrow_upward", 12)} ${m.score}</span>
+                <span class="bb-badge bb-badge--${safeType}">${safeType}</span>
+                <span class="bb-badge">${safeLang}</span>
+                <span class="bb-score">${bbIcon("arrow_upward", 12)} ${Number(m.score) || 0}</span>
             </div>
-            <div class="bb-mnemonic-text">${renderHighlights(m.text)}</div>
-            <div class="bb-mnemonic-author">by ${m.username}</div>
-            <button class="bb-save-btn" data-id="${m.id}" data-saved="${m.isSaved}">
+            <div class="bb-mnemonic-text">${renderHighlights(m.text ?? "")}</div>
+            <div class="bb-mnemonic-author">by ${safeUsername}</div>
+            <button class="bb-save-btn" data-id="${safeId}" data-saved="${safeIsSaved}">
                 ${m.isSaved ? `${bbIcon("check_circle", 14)} Saved` : `${bbIcon("bookmark_add", 14)} Save`}
             </button>
         </div>
@@ -710,7 +721,7 @@ async function loadMnemonics(subjectId) {
         renderInto(el);
 
     } catch (e) {
-        el.innerHTML = `<span class="bb-muted">Could not load mnemonics (${e.message}).</span>`;
+        el.innerHTML = `<span class="bb-muted">Could not load mnemonics (${escapeHtml(e.message)}).</span>`;
     }
 }
 
@@ -1121,14 +1132,21 @@ ENGLISH: [translation]
             return;
         }
 
+        // Sentences technically come from Gemini, but the prompt is built
+        // from user-supplied vocab/subjects, so a prompt-injection attack
+        // could in theory coerce the model into emitting raw HTML. We
+        // escape every interpolated value before innerHTML — the
+        // data-sentence attribute additionally JSON-encodes the object so
+        // it can be rehydrated by handleSaveSentence().
+        const safeVocab = escapeHtml(subject.characters ?? "");
         el.innerHTML = sentences.map((s, i) => `
             <div class="bb-sentence" data-index="${i}">
-                <div class="bb-sentence-jp">${s.sentence}</div>
-                <div class="bb-sentence-reading">${s.reading}</div>
-                <div class="bb-sentence-en">${s.english}</div>
-                <button class="bb-save-sentence-btn" 
-                    data-sentence='${JSON.stringify(s).replace(/'/g, "&#39;")}'
-                    data-vocab="${subject.characters}">
+                <div class="bb-sentence-jp">${escapeHtml(s.sentence)}</div>
+                <div class="bb-sentence-reading">${escapeHtml(s.reading)}</div>
+                <div class="bb-sentence-en">${escapeHtml(s.english)}</div>
+                <button class="bb-save-sentence-btn"
+                    data-sentence='${escapeHtml(JSON.stringify(s)).replace(/'/g, "&#39;")}'
+                    data-vocab="${safeVocab}">
                     ${bbIcon("bookmark_add", 14)} Save to Bunbee
                 </button>
             </div>
@@ -1207,8 +1225,15 @@ async function handleSaveSentence(btn) {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+// Renders the mnemonic body to HTML safely:
+//   1. Escape the entire string first (so any < > & " gets entitized).
+//   2. Then turn the literal `==text==` markers — which survive escaping
+//      unchanged — into <mark> tags.
+// This order matters: doing the regex first would let an attacker inject
+// raw HTML like ==<img onerror=…>==, which would be wrapped in <mark>
+// without ever being escaped.
 function renderHighlights(text) {
-    return text.replace(/==(.+?)==/g, "<mark>$1</mark>");
+    return escapeHtml(text).replace(/==(.+?)==/g, "<mark>$1</mark>");
 }
 
 function parseSentences(text) {
