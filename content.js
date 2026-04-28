@@ -798,8 +798,8 @@ function renderAddForm(subject) {
 
             <div class="bb-form-row bb-form-row--inline">
                 <label class="bb-checkbox">
-                    <input type="checkbox" id="bb-add-public" ${ADD_FORM_STATE.isPublic ? "checked" : ""} />
-                    <span>Make public</span>
+                    <input type="checkbox" id="bb-add-private" ${!ADD_FORM_STATE.isPublic ? "checked" : ""} />
+                    <span>Make private</span>
                 </label>
             </div>
 
@@ -880,10 +880,10 @@ function showAddForm(subject) {
     const captureInputs = () => {
         const ta = el.querySelector("#bb-add-text");
         const sel = el.querySelector("#bb-add-language");
-        const pub = el.querySelector("#bb-add-public");
+        const priv = el.querySelector("#bb-add-private");
         if (ta) ADD_FORM_STATE.text = ta.value;
         if (sel) ADD_FORM_STATE.language = sel.value;
-        if (pub) ADD_FORM_STATE.isPublic = pub.checked;
+        if (priv) ADD_FORM_STATE.isPublic = !priv.checked;
     };
 
     el.querySelectorAll(".bb-pill[data-type]").forEach((btn) => {
@@ -898,8 +898,8 @@ function showAddForm(subject) {
         ADD_FORM_STATE.language = e.target.value;
     });
 
-    el.querySelector("#bb-add-public")?.addEventListener("change", (e) => {
-        ADD_FORM_STATE.isPublic = e.target.checked;
+    el.querySelector("#bb-add-private")?.addEventListener("change", (e) => {
+        ADD_FORM_STATE.isPublic = !e.target.checked;
     });
 
     const ta = el.querySelector("#bb-add-text");
@@ -1016,6 +1016,43 @@ async function handleSaveNewMnemonic(subject) {
 
 // ─── Generate sentences ───────────────────────────────────────────────────────
 
+// Maps the HTTP status returned by /api/geminiproxy/generate to a friendly
+// message. Mirrors describeGenerateError() in the web app so the extension
+// surfaces the same wording — Gemini's status codes are forwarded as-is by
+// the proxy, and the proxy itself returns 429 for the per-IP rate limit.
+function describeGenerateError(status, rawBody) {
+    let geminiMsg = "";
+    try {
+        const parsed = typeof rawBody === "string" ? JSON.parse(rawBody) : rawBody;
+        geminiMsg = parsed?.error?.message ?? parsed?.message ?? "";
+    } catch { /* body wasn't JSON */ }
+
+    switch (status) {
+        case 429:
+            return "Too many requests in the last minute. Wait a few seconds and try again — Bunbee limits requests to keep things fair.";
+        case 503:
+            return "Gemini is overloaded right now (model busy). This usually clears up within a minute — wait a moment and try again.";
+        case 504:
+            return "Gemini took too long to respond. Try again in a moment.";
+        case 500:
+            return geminiMsg
+                ? `Internal error from the AI service: ${geminiMsg}. Try again in a moment.`
+                : "Internal error from the AI service. Try again in a moment.";
+        case 401:
+        case 403:
+            return "The AI service rejected the request (authentication issue). If this keeps happening, please contact support.";
+        case 400:
+            return geminiMsg
+                ? `The request was rejected: ${geminiMsg}.`
+                : "The request was rejected by Gemini.";
+        case 404:
+            return "The configured AI model isn't available. Please contact support.";
+        default:
+            if (geminiMsg) return `Generation failed (${status}): ${geminiMsg}`;
+            return `Generation failed (${status}). Please try again in a moment.`;
+    }
+}
+
 async function handleGenerate() {
     const jwt = await getJwt();
     const el = document.getElementById("bb-sentences-content");
@@ -1041,6 +1078,14 @@ READING: [furigana/romaji]
 ENGLISH: [translation]
 ---`;
 
+    const renderError = (message) => {
+        el.innerHTML = `
+            <div class="bb-form-error">${escapeHtml(message)}</div>
+            <button class="bb-btn" id="bb-generate-btn">Try again</button>
+        `;
+        el.querySelector("#bb-generate-btn")?.addEventListener("click", handleGenerate);
+    };
+
     try {
         const res = await fetch(`${BUNBEE_API}/api/geminiproxy/generate`, {
             method: "POST",
@@ -1051,12 +1096,17 @@ ENGLISH: [translation]
             body: JSON.stringify({ prompt }),
         });
 
-        if (!res.ok) throw new Error(`${res.status}`);
+        if (!res.ok) {
+            const body = await res.text().catch(() => "");
+            renderError(describeGenerateError(res.status, body));
+            return;
+        }
+
         const data = await res.json();
         const sentences = parseSentences(data.text);
 
         if (!sentences.length) {
-            el.innerHTML = `<span class="bb-muted">Could not parse sentences. Try again.</span>`;
+            renderError("Gemini returned a response, but Bunbee couldn't parse it into sentences. Try again — the model occasionally drifts from the expected format.");
             return;
         }
 
@@ -1080,11 +1130,7 @@ ENGLISH: [translation]
         el.querySelector("#bb-regenerate-btn")?.addEventListener("click", handleGenerate);
 
     } catch (e) {
-        el.innerHTML = `
-            <span class="bb-muted">Error: ${e.message}</span>
-            <button class="bb-btn" id="bb-generate-btn">Try again</button>
-        `;
-        el.querySelector("#bb-generate-btn")?.addEventListener("click", handleGenerate);
+        renderError(`Network error reaching Bunbee: ${e.message}. Check your connection and try again.`);
     }
 }
 
