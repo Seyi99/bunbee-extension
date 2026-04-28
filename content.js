@@ -541,6 +541,17 @@ async function triggerAddMnemonic() {
         return;
     }
 
+    // Preselect the mnemonic type based on what the user is currently being
+    // quizzed on. For radicals the question is always "Name" (which our schema
+    // stores as "meaning"); for kanji/vocabulary it matches the active question
+    // type. Falls back to the first allowed type when we can't detect one
+    // (e.g. lessons or pre-quiz screens) so the form is never left empty.
+    const questionType = getCurrentQuestionType();
+    const allowed = allowedMnemonicTypes(subject.subjectType);
+    ADD_FORM_STATE.type = (questionType && allowed.includes(questionType))
+        ? questionType
+        : allowed[0];
+
     // Render the form immediately with whatever we have (so the UI feels
     // snappy), then enrich with readings asynchronously if the DOM didn't
     // expose any yet. Radicals never have readings, so skip the fetch for
