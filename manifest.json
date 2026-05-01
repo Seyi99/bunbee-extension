@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Bunbee for WaniKani",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Mnemonics and AI sentence generation from Bunbee, right inside your WaniKani reviews.",
 
   "icons": {
@@ -40,7 +40,10 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "bunbee@bunbee.cc",
-      "strict_min_version": "109.0"
+      "strict_min_version": "109.0",
+      "data_collection_permissions": {
+        "required": ["authenticationInfo", "personallyIdentifyingInfo"]
+      }
     }
   }
 }
